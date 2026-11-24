@@ -1,0 +1,12 @@
+# Python / tooling
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+
+# Candidate data must never be committed (names + phone numbers)
+*.csv
+*.xlsx
+*.xls
+progress*.json
+!sample_candidates.csv
