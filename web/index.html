@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Candidate Outreach</title>
+    <meta name="description" content="Message job candidates on WhatsApp one by one with a pre-filled, personalised message. Your file never leaves your browser." />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230b6b57'/%3E%3Cpath d='M9 22l1.6-4.4A7 7 0 1 1 14 21z' fill='none' stroke='%23fff' stroke-width='2' stroke-linejoin='round'/%3E%3C/svg%3E" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="vendor/xlsx.full.min.js" defer></script>
+    <script src="js/app.js" type="module"></script>
+  </head>
+  <body>
+    <header class="masthead">
+      <div class="masthead__inner">
+        <p class="eyebrow">Recruiting · WhatsApp</p>
+        <h1>Candidate Outreach</h1>
+        <p class="lede">
+          Open a ready-written WhatsApp chat for each candidate, press Send yourself, and tick them off.
+          <strong>Your file never leaves this browser.</strong>
+        </p>
+      </div>
+    </header>
+
+    <div class="layout">
+      <aside class="panel" aria-label="Setup">
+        <section class="step">
+          <h2><span class="step__num">1</span> Candidates file</h2>
+          <label class="dropzone" id="dropzone">
+            <input type="file" id="file-input" accept=".csv,.xlsx,.xls" />
+            <span class="dropzone__title" id="file-label">Choose a CSV or Excel file</span>
+            <span class="dropzone__hint">or drop it here · .csv .xlsx .xls</span>
+          </label>
+          <div class="columns" id="column-pickers" hidden>
+            <label>Name column <select id="name-col"></select></label>
+            <label>Phone column <select id="phone-col"></select></label>
+          </div>
+        </section>
+
+        <section class="step">
+          <h2><span class="step__num">2</span> Open chats in</h2>
+          <fieldset class="choice" id="open-in">
+            <legend class="sr-only">Open chats in</legend>
+            <label class="choice__opt">
+              <input type="radio" name="open-in" value="app" />
+              <span><strong>WhatsApp app</strong> <em class="tag">fast</em>
+                <small>Desktop or phone app opens the chat in about a second. First time: tick “Always allow”.</small></span>
+            </label>
+            <label class="choice__opt">
+              <input type="radio" name="open-in" value="web" />
+              <span><strong>WhatsApp Web</strong>
+                <small>New browser tab; reloads WhatsApp Web every time, so it's slow.</small></span>
+            </label>
+          </fieldset>
+        </section>
+
+        <section class="step">
+          <h2><span class="step__num">3</span> Message</h2>
+          <textarea id="template" rows="9" spellcheck="true" aria-describedby="template-hint"></textarea>
+          <p class="hint" id="template-hint"><code>{name}</code> becomes each candidate's name.</p>
+          <button type="button" class="btn btn--ghost" id="restore-template">Restore default message</button>
+          <details class="preview" id="preview" hidden>
+            <summary>Preview</summary>
+            <pre id="preview-text"></pre>
+          </details>
+        </section>
+      </aside>
+
+      <main class="main" id="main">
+        <div class="notices" id="notices" aria-live="polite"></div>
+
+        <section class="empty" id="empty-state">
+          <p class="empty__big">Start with your candidates file.</p>
+          <p>It needs a column with names and a column with phone numbers. Pakistani numbers in any format work
+            (<span class="mono">0300-1234567</span>, <span class="mono">+92 300 1234567</span>…).
+            Progress is saved in this browser. To move to another computer, export the CSV and upload it there.</p>
+        </section>
+
+        <section id="workspace" hidden>
+          <div class="stats" id="stats" aria-label="Progress">
+            <div class="stat"><span class="stat__label">Total</span><span class="stat__value" id="stat-total">0</span></div>
+            <div class="stat stat--done"><span class="stat__label">Contacted</span><span class="stat__value" id="stat-contacted">0</span></div>
+            <div class="stat"><span class="stat__label">Pending</span><span class="stat__value" id="stat-pending">0</span></div>
+            <div class="meter" aria-hidden="true"><span id="meter-fill"></span></div>
+          </div>
+
+          <div class="toolbar">
+            <label class="search">
+              <span class="sr-only">Search by name</span>
+              <input type="search" id="search" placeholder="Search by name…" autocomplete="off" />
+            </label>
+            <div class="segmented" role="group" aria-label="Filter by status" id="status-filter">
+              <button type="button" data-status="All" aria-pressed="true">All</button>
+              <button type="button" data-status="Pending" aria-pressed="false">Pending</button>
+              <button type="button" data-status="Contacted" aria-pressed="false">Contacted</button>
+            </div>
+            <div class="toolbar__actions">
+              <button type="button" class="btn btn--primary" id="export">Export CSV with status</button>
+              <button type="button" class="btn btn--ghost btn--danger" id="reset">Reset progress</button>
+            </div>
+          </div>
+
+          <ol class="list" id="list" aria-label="Candidates"></ol>
+          <p class="list__footer">
+            <span id="showing"></span>
+            <button type="button" class="btn btn--ghost" id="load-more" hidden>Load 50 more</button>
+          </p>
+        </section>
+      </main>
+    </div>
+
+    <template id="row-template">
+      <li class="row">
+        <div class="row__who">
+          <span class="row__name"></span>
+          <span class="row__phone mono"></span>
+          <span class="row__also"></span>
+        </div>
+        <a class="btn btn--chat row__open">Open chat</a>
+        <label class="tick">
+          <input type="checkbox" class="row__check" />
+          <span>Contacted</span>
+        </label>
+        <input type="text" class="row__note" maxlength="500" placeholder="Add a note…" aria-label="Note" />
+      </li>
+    </template>
+  </body>
+</html>
