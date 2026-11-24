@@ -181,6 +181,16 @@ def test_exported_csv_restores_status_and_notes():
     assert "923021234567" not in restored  # untouched candidate stays out
 
 
+def test_export_neutralizes_formulas_but_keeps_phone_numbers():
+    df = pd.DataFrame({"Name": ["=1+1"], "Phone": ["+92 300 1234567"]})
+    prepared = prepare_candidates(df, "Name", "Phone")
+    progress = with_note({}, "923001234567", "=1+1", "@evil()")
+    exported = pd.read_csv(io.BytesIO(build_export(df, prepared, progress)), dtype=str, keep_default_na=False)
+    assert exported.loc[0, "Name"] == "'=1+1"
+    assert exported.loc[0, "Notes"] == "'@evil()"
+    assert exported.loc[0, "Phone"] == "+92 300 1234567"
+
+
 def test_plain_file_restores_nothing():
     df = pd.DataFrame({"Name": ["A"], "Phone": ["03001234567"]})
     assert progress_from_export(df, prepare_candidates(df, "Name", "Phone"), "Name") == {}

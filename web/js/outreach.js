@@ -229,8 +229,17 @@ export function countContacted(candidates, progress) {
 
 // ---------------------------------------------------------------- export
 
+/**
+ * Stop spreadsheet apps from running a cell as a formula (CSV injection).
+ * Plain phone numbers such as "+92 300 1234567" are left alone.
+ */
+export function neutralizeFormula(text) {
+  const risky = /^[=@\t\r]/.test(text) || (/^[+-]/.test(text) && /[A-Za-z(]/.test(text));
+  return risky ? `'${text}` : text;
+}
+
 function csvCell(value) {
-  const text = String(value ?? "");
+  const text = neutralizeFormula(String(value ?? ""));
   return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 

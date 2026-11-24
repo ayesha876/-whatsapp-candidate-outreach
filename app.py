@@ -208,6 +208,14 @@ def filter_candidates(candidates: pd.DataFrame, progress: dict, search: str, sta
     return result
 
 
+def neutralize_formula(text: str) -> str:
+    """Stop spreadsheet apps running a cell as a formula; plain phone numbers are untouched."""
+    risky = bool(re.match(r"[=@\t\r]", text)) or (
+        bool(re.match(r"[+-]", text)) and bool(re.search(r"[A-Za-z(]", text))
+    )
+    return f"'{text}" if risky else text
+
+
 def build_export(df: pd.DataFrame, prepared: PreparedData, progress: dict) -> bytes:
     export = df.assign(
         **{
@@ -217,7 +225,8 @@ def build_export(df: pd.DataFrame, prepared: PreparedData, progress: dict) -> by
             "Notes": prepared.normalized.map(lambda p: note_of(progress, p)),
         }
     )
-    return export.to_csv(index=False).encode("utf-8-sig")  # BOM so Excel shows Urdu names
+    safe = export.map(lambda v: neutralize_formula(str(v)))
+    return safe.to_csv(index=False).encode("utf-8-sig")  # BOM so Excel shows Urdu names
 
 
 def progress_from_export(df: pd.DataFrame, prepared: PreparedData, name_col: str) -> dict:

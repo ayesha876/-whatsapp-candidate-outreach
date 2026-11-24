@@ -10,6 +10,7 @@ import {
   filterCandidates,
   guessNameColumn,
   guessPhoneColumn,
+  neutralizeFormula,
   normalizePhone,
   prepareCandidates,
   progressFromExport,
@@ -165,6 +166,23 @@ test("export round-trip restores status and notes", () => {
   // Re-exporting an exported file does not duplicate the status columns.
   const again = parseCsv(buildExportCsv(table.rows, table.columns, reloaded, restored));
   assert.deepEqual(again.columns, table.columns);
+});
+
+test("export neutralizes spreadsheet formulas but keeps phone numbers", () => {
+  assert.equal(neutralizeFormula('=HYPERLINK("http://x","click")'), `'=HYPERLINK("http://x","click")`);
+  assert.equal(neutralizeFormula("@SUM(A1)"), "'@SUM(A1)");
+  assert.equal(neutralizeFormula("+cmd|' /C calc'!A0"), "'+cmd|' /C calc'!A0");
+  assert.equal(neutralizeFormula("-2+3+cmd"), "'-2+3+cmd");
+  assert.equal(neutralizeFormula("+92 300 1234567"), "+92 300 1234567");
+  assert.equal(neutralizeFormula("+923001234567, +923211234567"), "+923001234567, +923211234567");
+  assert.equal(neutralizeFormula("Ali"), "Ali");
+
+  const rows = rowsOf([["=1+1", "03001234567"]]);
+  const prepared = prepareCandidates(rows, "Name", "Phone");
+  const progress = withNote({}, "923001234567", "=1+1", "@evil()");
+  const csv = buildExportCsv(rows, ["Name", "Phone"], prepared, progress);
+  const line = csv.split("\r\n")[1];
+  assert.ok(line.startsWith("'=1+1,03001234567,923001234567,,Pending,'@evil()"), line);
 });
 
 test("plain file restores nothing", () => {
